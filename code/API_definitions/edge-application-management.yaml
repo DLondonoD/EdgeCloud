@@ -1028,6 +1028,29 @@ components:
             $ref: '#/components/schemas/Ipv6Addr'
           minItems: 1
 
+    AdditionalStorage:
+      description: Additional storage for the application.
+      type: array
+      items:
+        type: object
+        required:
+          - storageSize
+          - mountPoint
+        properties:
+          name:
+            type: string
+            description: Name of additional storage resource.
+            example: logs
+          storageSize:
+            type: string
+            description: Additional persistent volume for the application.
+            example: 80GB
+            pattern: ^\d+(GB|MB)$
+          mountPoint:
+            type: string
+            description: Location of additional storage resource.
+            example: /logs
+    
     AppId:
       type: string
       format: uuid
@@ -1318,6 +1341,46 @@ components:
       pattern: ^[A-Za-z][A-Za-z0-9_]{7,63}$
       description: Human readable name of the Application Provider.
 
+    Area:
+      description: Base schema for all areas
+      type: object
+      properties:
+        areaType:
+          $ref: "#/components/schemas/AreaType"
+      required:
+        - areaType
+      discriminator:
+        propertyName: areaType
+        mapping:
+          CIRCLE: "#/components/schemas/Circle"
+          POLYGON: "#/components/schemas/Polygon"
+
+    AreaType:
+      type: string
+      description: |
+        Type of this area.
+        CIRCLE - The area is defined as a circle.
+        POLYGON - The area is defined as a polygon.
+      enum:
+        - CIRCLE
+        - POLYGON
+
+    Circle:
+      description: Circular area
+      allOf:
+        - $ref: "#/components/schemas/Area"
+        - type: object
+          required:
+            - center
+            - radius
+          properties:
+            center:
+              $ref: "#/components/schemas/Point"
+            radius:
+              type: number
+              description: Distance from the center in meters
+              minimum: 1
+    
     ClusterInfo:
       description: Kubernetes cluster information
       required:
@@ -1348,6 +1411,18 @@ components:
             $ref: '#/components/schemas/KubernetesNodePool'
           minItems: 1
 
+    EdgeCloudFootprint:
+      description: |
+        The approximate geographic area that this edge cloud zone is intended to
+        serve. The footprint represents a logical service region where devices are
+        likely to be routed to this zone based on network topology and operator
+        policies, rather than the physical location of underlying infrastructure.
+        This information is provided for coarse selection, visualization in
+        orchestration or management portals, and to support region-based
+        considerations such as data residency.
+      allOf:
+        - $ref: "#/components/schemas/Area"
+    
     EdgeCloudProvider:
       type: string
       description: Human readable name of the Edge Cloud Provider.
@@ -1398,6 +1473,8 @@ components:
           $ref: '#/components/schemas/EdgeCloudProvider'
         edgeCloudRegion:
           $ref: '#/components/schemas/EdgeCloudRegion'
+        EdgeCloudFootprint:
+          $ref: '#/components/schemas/EdgeCloudFootprint'
       minItems: 1
 
     EdgeCloudZoneName:
@@ -1516,36 +1593,19 @@ components:
                   - vfio-pci
                   - interface
 
-    AdditionalStorage:
-      description: Additional storage for the application.
-      type: array
-      items:
-        type: object
-        required:
-          - storageSize
-          - mountPoint
-        properties:
-          name:
-            type: string
-            description: Name of additional storage resource.
-            example: logs
-          storageSize:
-            type: string
-            description: Additional persistent volume for the application.
-            example: 80GB
-            pattern: ^\d+(GB|MB)$
-          mountPoint:
-            type: string
-            description: Location of additional storage resource.
-            example: /logs
+    Latitude:
+      description: Latitude component of a location
+      type: number
+      format: double
+      minimum: -90
+      maximum: 90
 
-    Vcpu:
-      type: string
-      pattern: ^\d+((\.\d{1,3})|(m))?$
-      description: |
-        Number of vcpus in whole (i.e 1), decimal (i.e 0.500) up to
-        millivcpu, or millivcpu (i.e 500m) format.
-      example: "500m"
+    Longitude:
+      description: Longitude component of location
+      type: number
+      format: double
+      minimum: -180
+      maximum: 180
 
     KubernetesClusterRef:
       description: |
@@ -1757,8 +1817,9 @@ components:
         addons:
           $ref: '#/components/schemas/K8sAddons'
 
-    VmResources:
-      description: Definition of Virtual Machine Infrastructure
+
+    ContainerResources:
+      description: Container Infrastructure Definition
       type: object
       required:
         - infraKind
@@ -1768,19 +1829,16 @@ components:
         infraKind:
           description: Type of infrastructure for the application.
           type: string
-          example: virtualMachine
+          example: container
           enum:
-            - virtualMachine
+            - container
         numCPU:
-          type: integer
-          description: |
-            Number of vcpus in whole (i.e 1)
-          example: 1
+          $ref: '#/components/schemas/Vcpu'
         memory:
           type: integer
           example: 1024
           description: Memory in mega bytes
-        additionalStorages:
+        storage:
           $ref: '#/components/schemas/AdditionalStorage'
         gpu:
           $ref: '#/components/schemas/GpuInfo'
@@ -1804,31 +1862,6 @@ components:
           description: |
             Number of vcpus in whole (i.e 1)
           example: 1
-        memory:
-          type: integer
-          example: 1024
-          description: Memory in mega bytes
-        storage:
-          $ref: '#/components/schemas/AdditionalStorage'
-        gpu:
-          $ref: '#/components/schemas/GpuInfo'
-
-    ContainerResources:
-      description: Container Infrastructure Definition
-      type: object
-      required:
-        - infraKind
-        - numCPU
-        - memory
-      properties:
-        infraKind:
-          description: Type of infrastructure for the application.
-          type: string
-          example: container
-          enum:
-            - container
-        numCPU:
-          $ref: '#/components/schemas/Vcpu'
         memory:
           type: integer
           example: 1024
@@ -1897,6 +1930,44 @@ components:
             - OS_LICENSE_TYPE_ON_DEMAND
             - OTHER
 
+    Polygon:
+      description: |
+        Polygonal area. The Polygon should be a simple polygon,
+        i.e. should not intersect itself.
+      allOf:
+        - $ref: "#/components/schemas/Area"
+        - type: object
+          required:
+            - boundary
+          properties:
+            boundary:
+              $ref: "#/components/schemas/PointList"
+
+    PointList:
+      description: List of points defining a polygon
+      type: array
+      items:
+        $ref: "#/components/schemas/Point"
+      minItems: 3
+      maxItems: 15
+
+    Point:
+      type: object
+      description: Coordinates (latitude, longitude) defining a location in a map
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          $ref: "#/components/schemas/Latitude"
+        longitude:
+          $ref: "#/components/schemas/Longitude"
+      example:
+        latitude: 50.735851
+        longitude: 7.10066
+
+
+
     Port:
       type: integer
       description: Port to stablish the connection
@@ -1933,6 +2004,42 @@ components:
         A Uniform Resource Identifier (URI) as per RFC 3986,
         identifies the endpoint within an Edge Cloud Zone where the user
         equipment may connect to the selected application instance
+    
+    Vcpu:
+      type: string
+      pattern: ^\d+((\.\d{1,3})|(m))?$
+      description: |
+        Number of vcpus in whole (i.e 1), decimal (i.e 0.500) up to
+        millivcpu, or millivcpu (i.e 500m) format.
+      example: "500m"
+
+    VmResources:
+      description: Definition of Virtual Machine Infrastructure
+      type: object
+      required:
+        - infraKind
+        - numCPU
+        - memory
+      properties:
+        infraKind:
+          description: Type of infrastructure for the application.
+          type: string
+          example: virtualMachine
+          enum:
+            - virtualMachine
+        numCPU:
+          type: integer
+          description: |
+            Number of vcpus in whole (i.e 1)
+          example: 1
+        memory:
+          type: integer
+          example: 1024
+          description: Memory in mega bytes
+        additionalStorages:
+          $ref: '#/components/schemas/AdditionalStorage'
+        gpu:
+          $ref: '#/components/schemas/GpuInfo'
 
   responses:
     '400':
