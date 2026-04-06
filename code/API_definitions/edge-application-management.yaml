@@ -87,24 +87,14 @@ info:
     status, ordering the results by location and filtering by status
     (active/inactive/unknown)
 
-    # Authentication and Authorization
-    CAMARA guidelines defines a set of authorization flows which can grant API
-    clients access to the API functionality, as outlined in the document
-    [CAMARA-API-access-and-user-consent.md](https://github.com/camaraproject\
-    /IdentityAndConsentManagement/blob/main/documentation/CAMARA-API-access\
-    -and-user-consent.md).
-    Which specific authorization flows are to be used will be determined during
-    onboarding process, happening between the API Client and the Telco Edge
-    exposing the API, taking into account the declared purpose for accessing the
-    API, while also being subject to the prevailing legal framework dictated by
-    local legislation.
+    # Authorization and authentication
 
-    It is important to remark that in cases where personal user data is
-    processed by the API, and users can exercise their rights through mechanisms
-    such as opt-in and/or opt-out, the use of 3-legged access tokens becomes
-    mandatory. This measure ensures that the API remains in strict compliance
-    with user privacy preferences and regulatory obligations, upholding the
-    principles of transparency and user-centric data control.
+    The "Camara Security and Interoperability Profile" provides details of how an API consumer requests an access token. Please refer to Identity and Consent Management (https://github.com/camaraproject/IdentityAndConsentManagement/) for the released version of the profile.
+
+    The specific authorization flows to be used will be agreed upon during the onboarding process, happening between the API consumer and the API provider, taking into account the declared purpose for accessing the API, whilst also being subject to the prevailing legal framework dictated by local legislation.
+
+    In cases where personal data is processed by the API and users can exercise their rights through mechanisms such as opt-in and/or opt-out, the use of three-legged access tokens is mandatory. This ensures that the API remains in compliance with privacy regulations, upholding the principles of transparency and user-centric privacy-by-design.
+
     # API documentation
     Two operations have been defined in Edge Application Management API.
 
@@ -227,7 +217,7 @@ paths:
                 $ref: '#/components/schemas/ErrorInfo'
               example:
                 status: 409
-                code: CONFLICT
+                code: ALREADY_EXISTS
                 message: "App already exists"
         '500':
           $ref: '#/components/responses/500'
@@ -363,7 +353,7 @@ paths:
                 $ref: '#/components/schemas/ErrorInfo'
               example:
                 status: 409
-                code: CONFLICT
+                code: ABORTED
                 message: "App with a running application instance
                   cannot be deleted"
         '500':
@@ -435,7 +425,7 @@ paths:
                 $ref: '#/components/schemas/ErrorInfo'
               example:
                 status: 409
-                code: CONFLICT
+                code: ALREADY_EXISTS
                 message: "Application already instantiated in the given
                   Edge Cloud Zone"
         '500':
@@ -586,10 +576,12 @@ paths:
                   $ref: '#/components/schemas/AppId'
                 edgeCloudZones:
                   type: array
+                  maxItems: 100
                   items:
                     $ref: '#/components/schemas/EdgeCloudZoneId'
                 kubernetesClusterRefs:
                   type: array
+                  maxItems: 100
                   items:
                     $ref: '#/components/schemas/KubernetesClusterRef'
         required: true
@@ -620,7 +612,7 @@ paths:
                 $ref: '#/components/schemas/ErrorInfo'
               example:
                 status: 409
-                code: CONFLICT
+                code: ALREADY_EXISTS
                 message: "Deployment already exists"
         '500':
           $ref: '#/components/responses/500'
@@ -774,10 +766,12 @@ paths:
                   $ref: '#/components/schemas/AppDeploymentName'
                 edgeCloudZones:
                   type: array
+                  maxItems: 100
                   items:
                     $ref: '#/components/schemas/EdgeCloudZoneId'
                 kubernetesClusterRefs:
                   type: array
+                  maxItems: 100
                   items:
                     $ref: '#/components/schemas/KubernetesClusterRef'
             examples:
@@ -851,7 +845,7 @@ paths:
                 $ref: '#/components/schemas/ErrorInfo'
               example:
                 status: 409
-                code: CONFLICT
+                code: ABORTED
                 message: "Update conflict"
         '500':
           $ref: '#/components/responses/500'
@@ -985,15 +979,14 @@ components:
       description: |
         Correlation id for the different services
       schema:
-        type: string
+        $ref: "#/components/schemas/XCorrelator"
   headers:
     x-correlator:
       description: |
         Correlation id for the different services
       required: false
       schema:
-        type: string
-        format: uuid
+        $ref: "#/components/schemas/XCorrelator"
 
   schemas:
     AccessEndpoint:
@@ -1021,16 +1014,19 @@ components:
           items:
             $ref: '#/components/schemas/Ipv4Addr'
           minItems: 1
+          maxItems: 16
         ipv6Addresses:
           description: IP version 6 of an application instance.
           type: array
           items:
             $ref: '#/components/schemas/Ipv6Addr'
           minItems: 1
+          maxItems: 16
 
     AdditionalStorage:
       description: Additional storage for the application.
       type: array
+      maxItems: 50
       items:
         type: object
         required:
@@ -1039,21 +1035,27 @@ components:
         properties:
           name:
             type: string
+            maxLength: 64
             description: Name of additional storage resource.
             example: logs
           storageSize:
             type: string
+            maxLength: 32
             description: Additional persistent volume for the application.
             example: 80GB
             pattern: ^\d+(GB|MB)$
           mountPoint:
             type: string
+            maxLength: 64
             description: Location of additional storage resource.
             example: /logs
     
     AppId:
       type: string
       format: uuid
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      minLength: 36
+      maxLength: 36
       description: |
         A globally unique identifier associated with the application.
         Edge Cloud Platform generates this identifier when the
@@ -1062,6 +1064,9 @@ components:
     AppInstanceId:
       type: string
       format: uuid
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      minLength: 36
+      maxLength: 36
       description: |
         A globally unique identifier associated with a running
         instance of an application.
@@ -1071,6 +1076,9 @@ components:
     AppDeploymentId:
       type: string
       format: uuid
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      minLength: 36
+      maxLength: 36
       description: |
         A globally unique identifier associated with a existing deployment
         of an application. Edge Cloud Platform generates this identifier when
@@ -1093,10 +1101,12 @@ components:
           $ref: '#/components/schemas/AppId'
         edgeCloudZones:
           type: array
+          maxItems: 100
           items:
             $ref: '#/components/schemas/EdgeCloudZoneId'
         appInstances:
           type: array
+          maxItems: 100
           items:
             $ref: '#/components/schemas/AppInstanceId'
 
@@ -1135,6 +1145,7 @@ components:
             Application Client shall use these access points to reach this
             application instance
           type: array
+          maxItems: 100
           items:
             type: object
             required:
@@ -1143,7 +1154,9 @@ components:
             properties:
               interfaceId:
                 type: string
-                pattern: ^[A-Za-z0-9][A-Za-z0-9_]{6,30}[A-Za-z0-9]$
+                minLength: 4
+                maxLength: 32
+                pattern: ^[A-Za-z0-9][A-Za-z0-9_]{2,30}[A-Za-z0-9]$
                 description: |
                   This is the interface Identifier that Application Provider
                   defines when application is being submitted.
@@ -1157,11 +1170,13 @@ components:
 
     AppInstanceName:
       type: string
+      maxLength: 64
       pattern: ^[A-Za-z][A-Za-z0-9_]{1,63}$
       description: Name of the App instance, scoped to the AppProvider
 
     AppDeploymentName:
       type: string
+      maxLength: 64
       pattern: ^[A-Za-z][A-Za-z0-9_]{1,63}$
       description: Name of the App Deployment, scoped to the AppProvider
 
@@ -1174,12 +1189,14 @@ components:
           $ref: '#/components/schemas/AppId'
         name:
           type: string
+          maxLength: 64
           pattern: ^[A-Za-z][A-Za-z0-9_]{1,63}$
           description: Name of the application.
         appProvider:
           $ref: '#/components/schemas/AppProvider'
         version:
           type: string
+          maxLength: 64
           description: Application version information
         packageType:
           description: Format of the application image package
@@ -1217,12 +1234,13 @@ components:
               $ref: '#/components/schemas/Uri'
             userName:
               type: string
+              maxLength: 64
               description: |
                 Username to acces the Helm chart, docker-compose
                 file or VM image repository
             credentials:
               type: string
-              maxLength: 128
+              maxLength: 2048
               description: |
                 Password or personal access token created by
                 developer to acces the app repository. API users can generate
@@ -1240,6 +1258,7 @@ components:
                 auth or Bearer auth in HTTP "Authorization" header.
             checksum:
               type: string
+              maxLength: 128
               description: |
                 MD5 checksum for VM and file-based images, sha256
                 digest for containers
@@ -1257,6 +1276,7 @@ components:
             corresponding to the containers in helm charts or docker-compose
             yaml file as part of app descriptors.
           type: array
+          maxItems: 100
           items:
             type: object
             required:
@@ -1265,6 +1285,7 @@ components:
             properties:
               componentName:
                 type: string
+                maxLength: 64
                 description: Component name must be unique with an application
               networkInterfaces:
                 description: |
@@ -1277,6 +1298,7 @@ components:
                   against the "extPort" that the application clients will use
                   to connect with edge application instance.
                 type: array
+                maxItems: 100
                 items:
                   type: object
                   required:
@@ -1287,6 +1309,8 @@ components:
                   properties:
                     interfaceId:
                       type: string
+                      minLength: 4
+                      maxLength: 32
                       pattern: ^[A-Za-z][A-Za-z0-9_]{3,31}$
                       description: |
                         Each Port and corresponding traffic protocol
@@ -1303,15 +1327,7 @@ components:
                         Defines the IP transport communication
                         protocol i.e., TCP, UDP or ANY
                     port:
-                      type: integer
-                      format: int32
-                      minimum: 1
-                      maximum: 65535
-                      description: |
-                        Port number exposed by the component.
-                        Edge Cloud Provider may generate a dynamic port
-                        towards the component instance which forwards
-                        external traffic to the component port.
+                      $ref: '#/components/schemas/Port'
                     visibilityType:
                       description: |
                         Defines whether the interface is exposed
@@ -1338,6 +1354,7 @@ components:
 
     AppProvider:
       type: string
+      maxLength: 64
       pattern: ^[A-Za-z][A-Za-z0-9_]{7,63}$
       description: Human readable name of the Application Provider.
 
@@ -1380,7 +1397,7 @@ components:
               type: number
               description: Distance from the center in meters
               minimum: 1
-    
+
     ClusterInfo:
       description: Kubernetes cluster information
       required:
@@ -1391,6 +1408,7 @@ components:
       properties:
         name:
           type: string
+          maxLength: 64
           description: |
             Name of the Cluster, scoped to the Provider
         provider:
@@ -1403,14 +1421,78 @@ components:
           $ref: '#/components/schemas/EdgeCloudRegion'
         version:
           type: string
+          maxLength: 64
           description: Kubernetes version of the cluster.
         nodePools:
           description: Node Pools in the cluster.
           type: array
+          maxItems: 100
           items:
             $ref: '#/components/schemas/KubernetesNodePool'
           minItems: 1
 
+    ContainerResources:
+      description: Container Infrastructure Definition
+      type: object
+      required:
+        - infraKind
+        - numCPU
+        - memory
+      properties:
+        infraKind:
+          description: Type of infrastructure for the application.
+          type: string
+          example: container
+          enum:
+            - container
+        numCPU:
+          $ref: '#/components/schemas/Vcpu'
+        memory:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 16384
+          example: 1024
+          description: Memory in mega bytes
+        storage:
+          $ref: '#/components/schemas/AdditionalStorage'
+        gpu:
+          $ref: '#/components/schemas/GpuInfo'
+    
+    DockerComposeResources:
+      description: Definition of Docker Compose Infrastructure
+      type: object
+      required:
+        - infraKind
+        - numCPU
+        - memory
+      properties:
+        infraKind:
+          description: Type of infrastructure for the application.
+          type: string
+          example: dockerCompose
+          enum:
+            - dockerCompose
+        numCPU:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 256
+          description: |
+            Number of vcpus in whole (i.e 1)
+          example: 1
+        memory:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 16384
+          example: 1024
+          description: Memory in mega bytes
+        storage:
+          $ref: '#/components/schemas/AdditionalStorage'
+        gpu:
+          $ref: '#/components/schemas/GpuInfo'
+    
     EdgeCloudFootprint:
       description: |
         The approximate geographic area that this edge cloud zone is intended to
@@ -1425,10 +1507,12 @@ components:
     
     EdgeCloudProvider:
       type: string
+      maxLength: 64
       description: Human readable name of the Edge Cloud Provider.
 
     EdgeCloudRegion:
       type: string
+      maxLength: 64
       description: |
         Human readable name of the geographical Edge Cloud Region of
         the Edge Cloud. Defined by the Edge Cloud Provider.
@@ -1438,14 +1522,17 @@ components:
       items:
         $ref: '#/components/schemas/EdgeCloudZone'
       minItems: 1
+      maxItems: 100
       description: |
         A collection of Edge Cloud Zones where the Application Provider can
         instantiate an Application Instance.
-      additionalProperties: false
 
     EdgeCloudZoneId:
       type: string
       format: uuid
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      minLength: 36
+      maxLength: 36
       description: |
         Unique identifier created by the Edge Cloud Platform to identify an
         Edge Cloud Zone within an Edge Cloud.
@@ -1475,10 +1562,10 @@ components:
           $ref: '#/components/schemas/EdgeCloudRegion'
         EdgeCloudFootprint:
           $ref: '#/components/schemas/EdgeCloudFootprint'
-      minItems: 1
 
     EdgeCloudZoneName:
       type: string
+      maxLength: 64
       description: |
         Human readable name of the geographical zone of
         the Edge Cloud. Defined by the Edge Cloud Provider.
@@ -1494,24 +1581,30 @@ components:
 
     ErrorInfo:
       type: object
-      description: Information about the error
-      properties:
-        status:
-          type: integer
-          description: HTTP status code returned along with this error response
-        code:
-          type: string
-          description: Code given to this error
-        message:
-          type: string
-          description: Detailed error description
+      description: A structured error response providing details about a failed request, including the HTTP status code, an error code, and a human-readable message
       required:
         - status
         - code
         - message
+      properties:
+        status:
+          type: integer
+          format: int32
+          minimum: 100
+          maximum: 599
+          description: HTTP response status code
+        code:
+          type: string
+          maxLength: 96
+          description: A human-readable code to describe the error
+        message:
+          type: string
+          maxLength: 512
+          description: A human-readable description of what the event represents
 
     Fqdn:
       type: string
+      maxLength: 253
       description: |
         Full qualified domain name of an application instance
 
@@ -1524,9 +1617,15 @@ components:
       properties:
         gpuMemory:
           type: integer
+          format: int32
+          minimum: 0
+          maximum: 16384
           description: GPU memory in mega bytes
         numGPU:
           type: integer
+          format: int32
+          minimum: 0
+          maximum: 16
           description: Number of GPUs
 
     K8sAddons:
@@ -1559,14 +1658,17 @@ components:
             provider:
               description: CNI provider name
               type: string
+              maxLength: 64
               example: cilium
             version:
               description: CNI provider version
               type: string
+              maxLength: 64
               example: "1.13"
         additionalNetworks:
           description: Additional Networks for the Kubernetes cluster.
           type: array
+          maxItems: 100
           items:
             type: object
             description: Additional network interface definition
@@ -1574,6 +1676,7 @@ components:
               name:
                 description: Additional Network Name
                 type: string
+                maxLength: 64
                 example: net1
               interfaceType:
                 description: |
@@ -1613,6 +1716,9 @@ components:
         infrastructure.
       type: string
       format: uuid
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      minLength: 36
+      maxLength: 36
       example: "642f6105-7015-4af1-a4d1-e1ecb8437abc"
 
     KubernetesNodePool:
@@ -1628,9 +1734,13 @@ components:
         name:
           description: Human readable name of the Kubernetes Node Pool.
           type: string
+          maxLength: 64
         numNodes:
           description: Number of nodes in the Node Pool.
           type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
         scalable:
           description: |
             Indicates if the node pool can be dynamically scaled up by the
@@ -1649,11 +1759,17 @@ components:
               description: |
                 Number of whole vcpus for the node.
               type: integer
+              format: int32
+              minimum: 1
+              maximum: 256
               example: 2
             memory:
               description: |
                 Amount of system memory in mega bytes for the node.
               type: integer
+              format: int32
+              minimum: 1
+              maximum: 16384
               example: 4096
 
     KubernetesResources:
@@ -1694,10 +1810,16 @@ components:
                   description: |
                     Total number of vcpus in whole (i.e 1) of CPU pool.
                   type: integer
+                  format: int32
+                  minimum: 1
+                  maximum: 256
                   example: 1
                 memory:
                   description: Total memory in mega bytes of CPU pool.
                   type: integer
+                  format: int32
+                  minimum: 1
+                  maximum: 16384
                   example: 1024
                 topology:
                   type: object
@@ -1718,18 +1840,27 @@ components:
                         Minimum number of worker nodes required by the
                         application.
                       type: integer
+                      format: int32
+                      minimum: 1
+                      maximum: 1000
                       example: 5
                     minNodeCpu:
                       description: |
                         Minimum number of vcpus in whole (i.e 1) per cluster
                         node in CPU pool.
                       type: integer
+                      format: int32
+                      minimum: 1
+                      maximum: 256
                       example: 2
                     minNodeMemory:
                       description: |
                         Minimum memory in mega bytes per cluster node in
                         CPU pool.
                       type: integer
+                      format: int32
+                      minimum: 1
+                      maximum: 16384
                       example: 1024
             gpuPool:
               required:
@@ -1749,14 +1880,23 @@ components:
                   description: |
                     Total Number of vcpus in whole (i.e 1) of GPU pool.
                   type: integer
+                  format: int32
+                  minimum: 1
+                  maximum: 1024
                   example: 1
                 memory:
                   description: Total memory in mega bytes of GPU pool.
                   type: integer
+                  format: int32
+                  minimum: 1
+                  maximum: 16384
                   example: 1024
                 gpuMemory:
                   description: Total GPU memory in giga bytes of GPU pool.
                   type: integer
+                  format: int32
+                  minimum: 1
+                  maximum: 16
                   example: 16
                 topology:
                   type: object
@@ -1778,23 +1918,35 @@ components:
                         Minimum number of worker nodes with GPU required by
                         the application.
                       type: integer
+                      format: int32
+                      minimum: 1
+                      maximum: 1000
                       example: 2
                     minNodeCpu:
                       description: |
                         Minimum number of vcpus in whole (i.e 1) per cluster
                         node in GPU pool.
                       type: integer
+                      format: int32
+                      minimum: 1
+                      maximum: 256
                       example: 2
                     minNodeMemory:
                       description: |
                         Minimum memory in mega bytes per cluster node in
                         GPU pool.
                       type: integer
+                      format: int32
+                      minimum: 1
+                      maximum: 16384
                       example: 1024
                     minNodeGpuMemory:
                       description: Minimum memory in giga bytes per cluster
                         node in GPU pool.
                       type: integer
+                      format: int32
+                      minimum: 1
+                      maximum: 16
                       example: 8
         isStandalone:
           description: |
@@ -1804,10 +1956,12 @@ components:
           example: false
         version:
           type: string
+          maxLength: 64
           description: Minimum Kubernetes Version.
           example: "1.29"
         additionalStorage:
           type: string
+          maxLength: 32
           description: |
             Amount of persistent storage allocated to the Kubernetes PVC.
           example: 80GB
@@ -1817,62 +1971,9 @@ components:
         addons:
           $ref: '#/components/schemas/K8sAddons'
 
-
-    ContainerResources:
-      description: Container Infrastructure Definition
-      type: object
-      required:
-        - infraKind
-        - numCPU
-        - memory
-      properties:
-        infraKind:
-          description: Type of infrastructure for the application.
-          type: string
-          example: container
-          enum:
-            - container
-        numCPU:
-          $ref: '#/components/schemas/Vcpu'
-        memory:
-          type: integer
-          example: 1024
-          description: Memory in mega bytes
-        storage:
-          $ref: '#/components/schemas/AdditionalStorage'
-        gpu:
-          $ref: '#/components/schemas/GpuInfo'
-
-    DockerComposeResources:
-      description: Definition of Docker Compose Infrastructure
-      type: object
-      required:
-        - infraKind
-        - numCPU
-        - memory
-      properties:
-        infraKind:
-          description: Type of infrastructure for the application.
-          type: string
-          example: dockerCompose
-          enum:
-            - dockerCompose
-        numCPU:
-          type: integer
-          description: |
-            Number of vcpus in whole (i.e 1)
-          example: 1
-        memory:
-          type: integer
-          example: 1024
-          description: Memory in mega bytes
-        storage:
-          $ref: '#/components/schemas/AdditionalStorage'
-        gpu:
-          $ref: '#/components/schemas/GpuInfo'
-
     Ipv4Addr:
       type: string
+      maxLength: 15
       format: ipv4
       example: "192.168.0.1"
       description: |
@@ -1882,6 +1983,7 @@ components:
 
     Ipv6Addr:
       type: string
+      maxLength: 45
       format: ipv6
       example: "2001:db8:85a3:8d3:1319:8a2e:370:7344"
       description: |
@@ -1965,13 +2067,13 @@ components:
       example:
         latitude: 50.735851
         longitude: 7.10066
-
-
-
+    
     Port:
       type: integer
       description: Port to stablish the connection
-      minimum: 0
+      format: int32
+      minimum: 1
+      maximum: 65535
 
     RequiredResources:
       description: |
@@ -1999,6 +2101,7 @@ components:
 
     Uri:
       type: string
+      maxLength: 2048
       example: https://charts.bitnami.com/bitnami/helm/example-chart:0.1.0
       description: |
         A Uniform Resource Identifier (URI) as per RFC 3986,
@@ -2007,12 +2110,13 @@ components:
     
     Vcpu:
       type: string
+      maxLength: 16
       pattern: ^\d+((\.\d{1,3})|(m))?$
       description: |
         Number of vcpus in whole (i.e 1), decimal (i.e 0.500) up to
         millivcpu, or millivcpu (i.e 500m) format.
       example: "500m"
-
+    
     VmResources:
       description: Definition of Virtual Machine Infrastructure
       type: object
@@ -2029,17 +2133,30 @@ components:
             - virtualMachine
         numCPU:
           type: integer
+          format: int32
+          minimum: 1
+          maximum: 256
           description: |
             Number of vcpus in whole (i.e 1)
           example: 1
         memory:
           type: integer
+          format: int32
+          minimum: 1
+          maximum: 32768
           example: 1024
           description: Memory in mega bytes
         additionalStorages:
           $ref: '#/components/schemas/AdditionalStorage'
         gpu:
           $ref: '#/components/schemas/GpuInfo'
+
+    XCorrelator:
+      type: string
+      description: Correlator string, UUID format recommended but any string matching the pattern can be used
+      pattern: ^[a-zA-Z0-9-_:;.\/<>{}]{0,256}$
+      maxLength: 256
+      example: "b4333c46-49c0-4f62-80d7-f0ef930f1c46"
 
   responses:
     '400':
