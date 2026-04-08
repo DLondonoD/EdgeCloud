@@ -950,7 +950,7 @@ paths:
           description: Required latency in milliseconds. It is required to determine the EdgeCloudFootprint.
           in: query
           required: false
-          example: 10
+          example: low
           schema:
             $ref: "#/components/schemas/LatencyBudget"
       responses:
@@ -1706,10 +1706,11 @@ components:
                   - interface
 
     LatencyBudget:
-      type: integer
-      format: int32
-      minimum: 1
-      maximum: 1000
+      type: string
+      enum:
+        - low
+        - medium
+        - high
       description: |
         Latency required for an EdgeCloudZone.
 
